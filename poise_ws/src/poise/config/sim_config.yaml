@@ -1,0 +1,106 @@
+# POISE Phase 1 Simulation Configuration
+# Default scenario: stationary vehicle at central Tokyo, no faults active.
+# All parameters are read at node startup — edit and relaunch to change scenario.
+
+gnss_publisher:
+  ros__parameters:
+    # Publishing
+    publish_rate_hz: 10.0
+
+    # Initial position — central Tokyo (Tokyo Station)
+    initial_latitude: 35.6812
+    initial_longitude: 139.7671
+    initial_altitude: 40.0
+
+    # Noise model — RTK-fixed quality (fix_type=3): cm-level noise
+    position_noise_stddev_m: 0.05      # 1-sigma horizontal noise (metres)
+
+    # GNSS fix quality metadata
+    fix_type: 3                         # 0=no fix, 1=GPS, 2=DGPS, 3=RTK fixed
+    num_satellites: 12
+    hdop: 0.9
+
+    # Covariance reported in NavSatFix (diagonal, metres^2)
+    # Derived from position_noise_stddev_m^2; set higher to test covariance check
+    position_covariance_m2: 0.0025      # = 0.05^2
+
+    # -----------------------------------------------------------------------
+    # Fault injection
+    # fault_mode: none | drift | jump | dropout | covariance_inflation
+    # -----------------------------------------------------------------------
+    fault_mode: none
+
+    # drift: gradual position error that accumulates over time
+    drift_rate_m_per_s: 0.05            # metres per second error accumulation
+    drift_direction_deg: 0.0            # bearing of drift (0 = north)
+
+    # jump: instantaneous displacement at a configured time
+    jump_time_s: 20.0                   # seconds after node start
+    jump_north_m: 5.0                   # displacement north (negative = south)
+    jump_east_m: 0.0                    # displacement east  (negative = west)
+
+    # dropout: suppress topic publication for a duration
+    dropout_start_s: 15.0              # seconds after node start
+    dropout_duration_s: 5.0            # how long to suppress (seconds)
+
+    # covariance_inflation: artificially increase reported covariance
+    inflated_covariance_m2: 50.0       # value used during inflation period
+    inflation_start_s: 10.0
+    inflation_duration_s: 10.0
+
+imu_publisher:
+  ros__parameters:
+    # Publishing
+    publish_rate_hz: 100.0
+
+    # Noise model
+    accel_noise_stddev_mps2: 0.02      # 1-sigma accelerometer noise (m/s^2)
+    gyro_noise_stddev_radps: 0.001     # 1-sigma gyroscope noise (rad/s)
+
+    # Constant-velocity straight-line motion model
+    linear_velocity_mps: 0.0           # forward velocity (m/s); 0 = stationary
+    turn_rate_radps: 0.0               # yaw rate (rad/s); 0 = straight line
+
+    # -----------------------------------------------------------------------
+    # Fault injection
+    # fault_mode: none | bias | spike | dropout
+    # -----------------------------------------------------------------------
+    fault_mode: none
+
+    # bias: constant additive offset on one accelerometer axis
+    bias_axis: x                       # x | y | z
+    bias_magnitude_mps2: 0.5          # offset magnitude (m/s^2)
+
+    # spike: brief high-magnitude impulse
+    spike_time_s: 10.0                 # seconds after node start
+    spike_duration_s: 0.1             # duration of spike
+    spike_magnitude_mps2: 10.0        # magnitude of acceleration spike
+
+    # dropout: suppress IMU topic publication
+    dropout_start_s: 15.0
+    dropout_duration_s: 3.0
+
+gnss_imu_checker:
+  ros__parameters:
+    # Divergence thresholds (metres, Euclidean in local Cartesian frame)
+    warn_threshold_m: 1.5
+    critical_threshold_m: 3.0
+
+    # GNSS quality gates
+    min_satellites: 6
+    max_hdop: 2.0
+    max_covariance_m2: 25.0            # max acceptable diagonal covariance entry
+
+    # DR realignment window (seconds).
+    # DR runs continuously from an anchor for this duration before force-realigning.
+    # Longer windows → slower drift detectable; shorter → less IMU integration error.
+    # Set to 0 to reset DR at every fix (per-fix mode, original behaviour).
+    dr_realign_window_s: 60.0
+
+integrity_aggregator:
+  ros__parameters:
+    # How long a single WARN condition must persist before escalating to UNTRUSTED
+    warn_escalation_timeout_s: 5.0
+
+    # JSON-lines log file path (absolute or relative to working directory)
+    log_file_path: /tmp/poise_integrity_log.jsonl

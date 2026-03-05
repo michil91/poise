@@ -1,0 +1,19 @@
+# ROS2 build artifacts
+poise_ws/build/
+poise_ws/install/
+poise_ws/log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# POISE runtime outputs
+*.jsonl
+
+# Editor
+.vscode/
+.idea/
+*.swp
+.claude/
