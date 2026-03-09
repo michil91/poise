@@ -1,4 +1,4 @@
-# POISE Phase 2 Simulation Configuration
+# POISE Phase 3 Simulation Configuration
 # Default scenario: stationary vehicle at central Tokyo, no faults active.
 # All parameters are read at node startup — edit and relaunch to change scenario.
 
@@ -57,8 +57,10 @@ imu_publisher:
     gyro_noise_stddev_radps: 0.001     # 1-sigma gyroscope noise (rad/s)
 
     # Constant-velocity straight-line motion model
-    linear_velocity_mps: 0.0           # forward velocity (m/s); 0 = stationary
-    turn_rate_radps: 0.0               # yaw rate (rad/s); 0 = straight line
+    # YAML anchors allow vehicle_state_publisher to share these values without
+    # duplication — changing here updates both nodes automatically.
+    linear_velocity_mps: &sim_velocity 0.0   # forward velocity (m/s); 0 = stationary
+    turn_rate_radps: &sim_turn_rate 0.0      # yaw rate (rad/s); 0 = straight line
 
     # -----------------------------------------------------------------------
     # Fault injection
@@ -79,6 +81,22 @@ imu_publisher:
     dropout_start_s: 15.0
     dropout_duration_s: 3.0
 
+    # extrinsic_shift: constant Z-axis offset simulating a rotational mount shift.
+    # Applied always when non-zero, independent of fault_mode.
+    # A non-zero value causes the extrinsic_validator to detect IMU_EXTRINSIC_WARN
+    # or IMU_EXTRINSIC_CRITICAL once enough stationary samples are collected.
+    # Set to 0.0 for nominal operation; set to e.g. 2.0 to test Phase 3 extrinsic check.
+    extrinsic_shift: 0.0               # m/s² — positive = shift toward less negative Z
+
+vehicle_state_publisher:
+  ros__parameters:
+    publish_rate_hz: 50.0
+    # Reuse imu_publisher velocity values via YAML anchors (defined above).
+    # Both nodes model the same vehicle motion — keeping them in sync is critical
+    # for the extrinsic_validator's standstill detection.
+    linear_velocity_mps: *sim_velocity
+    turn_rate_radps: *sim_turn_rate
+
 gnss_imu_checker:
   ros__parameters:
     # Divergence thresholds (metres, Euclidean in local Cartesian frame)
@@ -96,6 +114,68 @@ gnss_imu_checker:
     # Seconds without a GNSS fix before GNSS_DROPOUT is raised.
     # Should be > 2× GNSS period (at 10 Hz → 0.2 s); default 2.0 s.
     gnss_dropout_timeout_s: 2.0
+
+calibration_validator:
+  ros__parameters:
+    # IMU physical calibration envelope
+    # max_linear_accel: ~5G — beyond this the accelerometer is physically saturated
+    # or experiencing an impossible mechanical event.  Nominal gravity is ~9.81 m/s².
+    imu_max_linear_accel: 49.0         # m/s² — approximately 5G, physical sensor limit
+
+    # max_angular_velocity: beyond normal vehicle dynamic envelope.
+    # A car executing a rapid U-turn peaks at ~1.5 rad/s; 10 rad/s is physically
+    # impossible and indicates sensor failure or electrical interference.
+    imu_max_angular_velocity: 10.0     # rad/s
+
+    # Z-axis gravity range: the IMU Z-axis should always measure approximately
+    # -9.81 m/s² when the vehicle is level (sensor includes gravity in its output).
+    # Tolerance of ±4.8 m/s² allows for vehicle pitch/roll and sensor noise,
+    # while catching catastrophic misalignment or mounting errors.
+    imu_min_accel_z: -15.0            # m/s² — gravity minus large tolerance
+    imu_max_accel_z: -5.0             # m/s² — gravity plus large tolerance
+
+    # GNSS fix quality envelope
+    # max_covariance: 25 m² = 5 m 1σ — beyond this the fix is not usable for
+    # lane-level positioning.
+    gnss_max_covariance: 25.0         # m²
+
+    # min_fix_type: minimum NavSatStatus.status value.
+    # STATUS_NO_FIX=-1, STATUS_FIX=0, STATUS_SBAS_FIX=1, STATUS_GBAS_FIX=2.
+    # Set to 0 (STATUS_FIX) for simulation — the sim always publishes STATUS_FIX.
+    # In a production Autoware deployment, consider raising to 1 (SBAS) or 2 (GBAS).
+    gnss_min_fix_type: 0               # minimum acceptable NavSatStatus value
+
+    # Geofence: expected operating area for the vehicle.
+    # Central Tokyo station area — change for a different deployment region.
+    # GNSS_OUT_OF_GEOFENCE is recoverable: the vehicle may re-enter the area.
+    gnss_geofence_lat_min: 35.0        # degrees
+    gnss_geofence_lat_max: 36.5
+    gnss_geofence_lon_min: 139.0       # degrees
+    gnss_geofence_lon_max: 140.5
+
+extrinsic_validator:
+  ros__parameters:
+    # Expected Z-axis gravity reading when level and stationary.
+    # With IMU body frame Z-down convention, gravity is -9.81 m/s².
+    imu_expected_gravity_z: -9.81      # m/s²
+
+    # Tolerances for systematic gravity deviation:
+    # warn_tolerance: 0.5 m/s² ≈ 3° of mount tilt — detectable systematic offset
+    # critical_tolerance: 1.5 m/s² ≈ 9° of mount tilt — compromises DR accuracy
+    imu_gravity_warn_tolerance: 0.5    # m/s²
+    imu_gravity_critical_tolerance: 1.5  # m/s²
+
+    # Standstill detection threshold
+    imu_stationary_velocity_threshold: 0.5  # m/s — below this, vehicle is stationary
+
+    # Minimum samples before the check runs (avoids false alarms during startup)
+    imu_min_stationary_samples: 50     # IMU samples at 100 Hz = 0.5 s minimum
+
+    # Rolling window for mean computation.
+    # 100 samples at 100 Hz = 1 s of data.
+    # Averaging over 100 samples reduces 1σ noise (0.02 m/s²) by √100 = 10×,
+    # giving sensitivity to systematic offsets > ~0.006 m/s².
+    imu_sample_window: 100
 
 integrity_aggregator:
   ros__parameters:

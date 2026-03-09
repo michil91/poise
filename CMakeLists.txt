@@ -55,6 +55,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  poise/checks/calibration_validator.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME calibration_validator
+)
+
+install(PROGRAMS
   poise/core/integrity_aggregator.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME integrity_aggregator
