@@ -43,6 +43,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  poise/sim/vehicle_state_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME vehicle_state_publisher
+)
+
+install(PROGRAMS
   poise/checks/gnss_imu_checker.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME gnss_imu_checker

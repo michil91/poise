@@ -22,7 +22,10 @@ setup(
         'console_scripts': [
             'gnss_publisher = poise.sim.gnss_publisher:main',
             'imu_publisher = poise.sim.imu_publisher:main',
+            'vehicle_state_publisher = poise.sim.vehicle_state_publisher:main',
             'gnss_imu_checker = poise.checks.gnss_imu_checker:main',
+            'calibration_validator = poise.checks.calibration_validator:main',
+            'extrinsic_validator = poise.checks.extrinsic_validator:main',
             'integrity_aggregator = poise.core.integrity_aggregator:main',
         ],
     },
