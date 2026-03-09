@@ -61,6 +61,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  poise/checks/extrinsic_validator.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME extrinsic_validator
+)
+
+install(PROGRAMS
   poise/core/integrity_aggregator.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME integrity_aggregator
