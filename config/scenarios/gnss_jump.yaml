@@ -1,0 +1,8 @@
+# GNSS jump scenario — 4 m instantaneous northward displacement at t=15 s.
+# Triggers GNSS_IMU_DIVERGENCE_CRITICAL immediately after the jump.
+gnss_publisher:
+  ros__parameters:
+    fault_mode: jump
+    jump_time_s: 15.0
+    jump_north_m: 4.0
+    jump_east_m: 0.0

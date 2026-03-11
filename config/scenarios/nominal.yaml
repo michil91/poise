@@ -1,0 +1,9 @@
+# Nominal scenario — no faults, all defaults from sim_config.yaml.
+gnss_publisher:
+  ros__parameters:
+    fault_mode: none
+
+imu_publisher:
+  ros__parameters:
+    fault_mode: none
+    extrinsic_shift: 0.0

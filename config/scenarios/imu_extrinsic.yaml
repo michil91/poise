@@ -1,0 +1,6 @@
+# IMU extrinsic scenario — 2.0 m/s² Z-axis offset simulating a mount shift.
+# extrinsic_shift is applied continuously, independent of fault_mode.
+# Triggers IMU_EXTRINSIC_WARN then CRITICAL after ~0.5 s of stationary samples.
+imu_publisher:
+  ros__parameters:
+    extrinsic_shift: 2.0

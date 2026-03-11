@@ -30,7 +30,7 @@ gnss_publisher:
     fault_mode: none
 
     # drift: gradual position error that accumulates over time
-    drift_rate_m_per_s: 0.05            # metres per second error accumulation
+    drift_rate_m_per_s: 0.1            # metres per second error accumulation
     drift_direction_deg: 0.0            # bearing of drift (0 = north)
 
     # jump: instantaneous displacement at a configured time

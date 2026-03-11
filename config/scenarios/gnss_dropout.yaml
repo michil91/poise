@@ -1,0 +1,8 @@
+# GNSS dropout scenario — topic suppressed for 30 s starting at t=10 s.
+# Triggers recoverable GNSS_DROPOUT, then auto-recovers after GNSS returns
+# and the 10 s revalidation period elapses.
+gnss_publisher:
+  ros__parameters:
+    fault_mode: dropout
+    dropout_start_s: 10.0
+    dropout_duration_s: 30.0

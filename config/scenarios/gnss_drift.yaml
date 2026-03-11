@@ -1,0 +1,7 @@
+# GNSS drift scenario — gradual northward position error at 0.1 m/s.
+# Triggers GNSS_IMU_DIVERGENCE_WARN (~15 s) then CRITICAL (~30 s).
+gnss_publisher:
+  ros__parameters:
+    fault_mode: drift
+    drift_rate_m_per_s: 0.1
+    drift_direction_deg: 0.0

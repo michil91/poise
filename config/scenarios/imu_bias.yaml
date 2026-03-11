@@ -1,0 +1,7 @@
+# IMU bias scenario — constant 0.8 m/s² offset on the X accelerometer axis.
+# Corrupts dead-reckoning velocity estimate, causing DR divergence over time.
+imu_publisher:
+  ros__parameters:
+    fault_mode: bias
+    bias_axis: x
+    bias_magnitude_mps2: 0.8

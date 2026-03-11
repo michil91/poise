@@ -1,0 +1,9 @@
+# IMU spike scenario — 55 m/s² (>5G) impulse at t=10 s lasting 0.1 s.
+# Triggers IMU_ACCEL_ENVELOPE_CRITICAL (calibration_validator) and
+# corrupts DR velocity, causing persistent GNSS/IMU divergence.
+imu_publisher:
+  ros__parameters:
+    fault_mode: spike
+    spike_time_s: 10.0
+    spike_duration_s: 0.1
+    spike_magnitude_mps2: 55.0
