@@ -1,11 +1,25 @@
 # POISE — Position and Orientation Integrity Supervision Engine
 
-> **Phase 3** · ROS2 Humble · Python · Autoware-compatible
+> **Phase 4** · ROS2 Humble · Python · Autoware-compatible
 
 POISE monitors the trustworthiness of an autonomous vehicle's localization
 solution by cross-checking independent sensor sources against each other and
 publishing a system-level integrity state that a supervisory controller can
 act on.
+
+![POISE GNSS Drift Demo](docs/demo_gnss_drift.png)
+
+---
+
+## Demo
+
+The screenshot above shows POISE running the `gnss_drift` scenario in RViz2.
+The blue sphere represents the GNSS position drifting northward from the map
+origin at 0.1 m/s, dragging the yellow and orange divergence circles with it,
+while the orange dead-reckoning sphere stays near the origin.  As the
+separation crosses the 1.5 m threshold the system transitions TRUSTED →
+DEGRADED → UNTRUSTED, shown in red at the top of the view.  The traffic-light
+panel on the right displays per-checker fault status in real time.
 
 ---
 
@@ -72,11 +86,26 @@ fault propagates into the vehicle's control loop.
  │                │    ↓             │   │                                   │
  │                │  UNTRUSTED ──────┘   │                                   │
  │                │  (reset via service) │                                   │
- │                └─────────┬───────────┘                                   │
- │                          │ SYSTEM_STATUS_QOS                             │
- │                    /poise/system_integrity (JSON)                        │
- │                    /poise/reset (Trigger service)                        │
- │                    + JSONL log file                                       │
+ │                └──────┬──────────────┘                                   │
+ │                       │ /poise/system_integrity  /poise/reset            │
+ │                       │ /poise/integrity_status  + JSONL log             │
+ │                       │                                                   │
+ │          /sim/gnss ───┼──────────────────────────────────┐               │
+ │  /poise/dr_position ──┼──────────────────────────┐       │               │
+ │                       ▼                          ▼       ▼               │
+ │                ┌──────────────────────────────────────────────┐          │
+ │                │            status_visualizer                 │          │
+ │                │  Translates integrity state to RViz2 markers │          │
+ │                │  • Trust state text  • Traffic-light panel   │          │
+ │                │  • GNSS/DR position spheres and trails       │          │
+ │                │  • Divergence threshold circles (1.5/3.0 m)  │          │
+ │                │  • Reference grid  • Legend                  │          │
+ │                └───────────────────┬──────────────────────────┘          │
+ │                                    │ /poise/viz/*                        │
+ │                                    ▼                                     │
+ │                             ┌────────────┐                               │
+ │                             │   RViz2    │  (poise.rviz config)          │
+ │                             └────────────┘                               │
  └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -189,7 +218,9 @@ ros2 service call /poise/reset std_srvs/srv/Trigger
 
 ## Fault Injection Usage
 
-All fault modes are controlled entirely through `config/sim_config.yaml`.
+Fault scenarios are selected at launch time using the `scenario:=` argument
+(see [Scenarios](#scenarios) above).  For custom fault combinations, the
+underlying parameters in `config/sim_config.yaml` can also be edited directly.
 
 ### GNSS Fault Modes
 
@@ -215,6 +246,29 @@ imu_publisher:
 
     extrinsic_shift: 2.0         # always applied; 2.0 > crit_tol 1.5 → IMU_EXTRINSIC_CRITICAL
 ```
+
+---
+
+## Scenarios
+
+POISE ships with seven pre-defined fault scenarios selectable at launch time.
+No config file editing is required.
+
+```bash
+ros2 launch poise poise.launch.py scenario:=<name>
+```
+
+| Scenario | Description |
+|---|---|
+| `nominal` | No faults — all checks green, system holds TRUSTED |
+| `gnss_drift` | GNSS drifts north at 0.1 m/s — triggers GNSS/IMU divergence warn then critical |
+| `gnss_jump` | 4 m instantaneous GNSS displacement at t=15 s — instant CRITICAL |
+| `gnss_dropout` | GNSS topic suppressed for 30 s from t=10 s — recoverable dropout, auto-recovery |
+| `imu_bias` | Constant 0.8 m/s² accelerometer bias on X axis — corrupts dead-reckoning |
+| `imu_spike` | 55 m/s² impulse at t=10 s — IMU envelope CRITICAL + DR corruption |
+| `imu_extrinsic` | 2.0 m/s² Z-axis mount shift — extrinsic CRITICAL after stationary samples |
+
+An unrecognised scenario name prints a clear error listing valid names and exits without starting any nodes.
 
 ---
 
@@ -246,13 +300,19 @@ ros2 pkg executables poise
 #   poise gnss_publisher
 #   poise imu_publisher
 #   poise integrity_aggregator
+#   poise status_visualizer
 #   poise vehicle_state_publisher
 ```
 
-### 3 — Launch (Phase 3 nominal)
+### 3 — Launch
 
 ```bash
-ros2 launch poise poise_phase3.launch.py
+# Nominal (no faults) — opens RViz2 with live integrity visualization
+ros2 launch poise poise.launch.py
+
+# With a fault scenario
+ros2 launch poise poise.launch.py scenario:=gnss_drift
+ros2 launch poise poise.launch.py scenario:=imu_spike
 ```
 
 ### 4 — Verify topics
