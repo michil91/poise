@@ -179,6 +179,44 @@ extrinsic_validator:
     # giving sensitivity to systematic offsets > ~0.006 m/s².
     imu_sample_window: 100
 
+odometry_publisher:
+  ros__parameters:
+    publish_rate_hz: 50.0
+    # linear_velocity_mps and turn_rate_radps are intentionally omitted here.
+    # The node defaults both to 0.0 (matching imu_publisher defaults).
+    # Override per-scenario in scenario yaml files when non-zero velocity is needed.
+
+    # -----------------------------------------------------------------------
+    # Fault injection
+    # fault_mode: none | slip | dropout
+    # -----------------------------------------------------------------------
+    fault_mode: none
+
+    # slip: multiplies reported linear velocity by slip_factor from slip_time_s onward.
+    slip_factor: 0.95         # velocity multiplier (0.95 = 5% understated)
+    slip_time_s: 10.0         # seconds after node start
+
+    # dropout: suppress topic publication for dropout_duration_s from dropout_time_s.
+    dropout_time_s: 15.0
+    dropout_duration_s: 20.0
+
+odometry_checker:
+  ros__parameters:
+    # Displacement divergence thresholds (metres, Euclidean in local Cartesian frame)
+    warn_threshold_m: 1.5
+    critical_threshold_m: 3.0
+
+    # Seconds without an odometry message before ODOM_DROPOUT is raised.
+    # Should be > 2× odometry period (at 50 Hz → 0.02 s); default 2.0 s.
+    dropout_timeout_s: 2.0
+
+    # Sliding integration window (seconds).
+    # Longer than the IMU DR window (60 s) because odometry error grows O(T)
+    # vs O(T^1.5) for IMU, making it more reliable over longer horizons.
+    # At 180 s and a 1.5 m warn threshold the minimum detectable drift rate
+    # is ~8 mm/s — covering realistic urban GNSS multipath scenarios.
+    integration_window_s: 180.0
+
 integrity_aggregator:
   ros__parameters:
     # How long a non-recoverable WARN must persist before escalating to UNTRUSTED.

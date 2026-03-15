@@ -1,0 +1,15 @@
+# Odometry dropout scenario — odometry topic suppressed for 20 seconds.
+#
+# Dropout begins at t=15s and lasts 20s (resumes at t=35s).
+# ODOM_DROPOUT (recoverable=True, STATUS_WARN) is raised at ~t=17s after the
+# 2s dropout_timeout_s elapses.  The fault clears automatically when odometry
+# resumes and the next message is received.
+#
+# Vehicle remains stationary (default linear_velocity_mps=0.0) — the dropout
+# check is time-based and does not require movement.
+
+odometry_publisher:
+  ros__parameters:
+    fault_mode: dropout
+    dropout_time_s: 15.0
+    dropout_duration_s: 20.0

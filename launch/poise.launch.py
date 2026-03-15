@@ -1,7 +1,7 @@
 """
-POISE Combined Launch File — Phase 4.
+POISE Combined Launch File — Phase 4 + wheel odometry cross-check.
 
-Starts all eight POISE nodes plus RViz2 pre-configured with poise.rviz.
+Starts all ten POISE nodes plus RViz2 pre-configured with poise.rviz.
 Parameters are loaded from config/sim_config.yaml (base) overlaid with
 the selected scenario file from config/scenarios/<scenario>.yaml.
 
@@ -14,10 +14,12 @@ Usage
   ros2 launch poise poise.launch.py scenario:=imu_bias
   ros2 launch poise poise.launch.py scenario:=imu_spike
   ros2 launch poise poise.launch.py scenario:=imu_extrinsic
+  ros2 launch poise poise.launch.py scenario:=odom_slip
+  ros2 launch poise poise.launch.py scenario:=odom_dropout
 
 Topics
 ------
-Sensor simulation:   /sim/gnss, /sim/imu, /sim/vehicle_state
+Sensor simulation:   /sim/gnss, /sim/imu, /sim/vehicle_state, /sim/odometry
 Integrity outputs:   /poise/integrity_status, /poise/system_integrity
 Visualization:       /poise/viz/* (consumed by RViz2)
 DR position:         /poise/dr_position (gnss_imu_checker → status_visualizer)
@@ -40,6 +42,8 @@ _VALID_SCENARIOS = [
     'imu_bias',
     'imu_spike',
     'imu_extrinsic',
+    'odom_slip',
+    'odom_dropout',
 ]
 
 
@@ -92,6 +96,14 @@ def _launch_setup(context, *args, **kwargs):
             output='screen',
         ),
 
+        Node(
+            package='poise',
+            executable='odometry_publisher',
+            name='odometry_publisher',
+            parameters=params,
+            output='screen',
+        ),
+
         # ── Integrity checker nodes ───────────────────────────────────────────
         Node(
             package='poise',
@@ -113,6 +125,14 @@ def _launch_setup(context, *args, **kwargs):
             package='poise',
             executable='extrinsic_validator',
             name='extrinsic_validator',
+            parameters=params,
+            output='screen',
+        ),
+
+        Node(
+            package='poise',
+            executable='odometry_checker',
+            name='odometry_checker',
             parameters=params,
             output='screen',
         ),

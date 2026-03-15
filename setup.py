@@ -28,6 +28,8 @@ setup(
             'extrinsic_validator = poise.checks.extrinsic_validator:main',
             'integrity_aggregator = poise.core.integrity_aggregator:main',
             'status_visualizer = poise.visualization.status_visualizer:main',
+            'odometry_publisher = poise.sim.odometry_publisher:main',
+            'odometry_checker = poise.checks.odometry_checker:main',
         ],
     },
 )

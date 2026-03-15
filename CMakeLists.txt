@@ -14,6 +14,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 
 # ── Generate custom messages ─────────────────────────────────────────────────
 # rosidl installs the poise.msg Python module automatically.
@@ -80,6 +81,18 @@ install(PROGRAMS
   RENAME status_visualizer
 )
 
+install(PROGRAMS
+  poise/sim/odometry_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME odometry_publisher
+)
+
+install(PROGRAMS
+  poise/checks/odometry_checker.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME odometry_checker
+)
+
 # Install visualization __init__.py so the module is importable during development
 install(FILES
   poise/visualization/__init__.py
@@ -99,5 +112,5 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_export_dependencies(rosidl_default_runtime std_srvs geometry_msgs visualization_msgs)
+ament_export_dependencies(rosidl_default_runtime std_srvs geometry_msgs visualization_msgs nav_msgs)
 ament_package()
