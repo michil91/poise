@@ -1,13 +1,13 @@
 # Odometry slip scenario — wheel slip causes understated odometry velocity.
 #
 # Vehicle moves at 10 m/s (36 km/h).  Slip activates at t=10s, multiplying the
-# reported odometry velocity by 0.95 (5% understatement).  With 10 m/s true speed
-# the cumulative displacement error grows at ~0.5 m/s after slip onset:
-#   ODOM_GNSS_DIVERGENCE_WARN     at ~t=13s  (delta > 1.5 m)
-#   ODOM_GNSS_DIVERGENCE_CRITICAL at ~t=16s  (delta > 3.0 m)
-# The 5% understatement stays above the 10% slip_ratio threshold, so
-# ODOM_SLIP_SUSPECTED does not trigger — this scenario demonstrates the
-# divergence detection path rather than the systematic-slip path.
+# reported odometry velocity by 0.80 (20% understatement).  With 10 m/s true speed:
+#   ODOM_SLIP_SUSPECTED           at ~t=10.5s (odom/gnss ratio 0.80 < 0.90 threshold,
+#                                              once gnss_disp > 5 m)
+#   ODOM_GNSS_DIVERGENCE_WARN     at ~t=10.75s (delta > 1.5 m, growing at 2 m/s)
+#   ODOM_GNSS_DIVERGENCE_CRITICAL at ~t=11.5s  (delta > 3.0 m)
+# The 20% understatement falls below the 10% slip_ratio threshold, demonstrating
+# the systematic-slip detection path as well as the divergence path.
 
 gnss_publisher:
   ros__parameters:
@@ -25,5 +25,5 @@ odometry_publisher:
   ros__parameters:
     linear_velocity_mps: 10.0
     fault_mode: slip
-    slip_factor: 0.95
+    slip_factor: 0.80
     slip_time_s: 10.0

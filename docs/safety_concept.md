@@ -322,7 +322,95 @@ validator conservatively holds the last known stationary/moving determination.
 
 ---
 
-## 7. Relationship to ISO 26262 / SOTIF
+## 7. Monitor Integrity
+
+### 7.1 The "Who Watches the Watchman" Problem
+
+POISE is a safety monitor.  Any safety monitor faces the *quis custodiet ipsos
+custodes* problem: if the monitor itself fails silently, the system it protects
+loses its integrity guarantee without any indication that the protection has been
+removed.
+
+A POISE process crash, an unhandled exception in the ROS2 executor, a node
+respawn that loses accumulated fault state, or a silent memory corruption can
+all cause POISE to stop performing its monitoring function.  The system under
+supervision would continue operating under a false assumption of monitoring
+coverage.
+
+### 7.2 Why the Watchdog is Deliberately Out of Scope for POISE
+
+An in-process watchdog — a thread or timer within the same ROS2 process that
+monitors POISE's own health — would be defeated by the same failure modes it is
+intended to detect:
+
+- A process crash kills both the watchdog and the monitored code simultaneously.
+- A deadlock in the ROS2 executor stalls both the watchdog timer and the
+  integrity check callbacks.
+- A memory corruption event can corrupt the watchdog state as readily as any
+  other state.
+- A node restart (by a supervisor like `ros2 lifecycle` or `systemd`) resets
+  the watchdog alongside the monitor, hiding the restart event from downstream
+  consumers.
+
+**Sharing a failure domain defeats the purpose of a watchdog.**  A watchdog is
+only meaningful if it operates in a separate failure domain from the component
+it monitors.  This is the *defense in depth* principle from ISO 26262 Part 5
+§5.4.5 ("Separation of safety mechanisms from the functions they monitor"):
+safety mechanisms must not be affected by the same fault that compromises the
+monitored function.
+
+Implementing a watchdog inside POISE would provide false confidence.  It is
+therefore deliberately excluded from POISE's scope.
+
+### 7.3 /poise/heartbeat as the External Interface Point
+
+POISE publishes a `std_msgs/Header` message on `/poise/heartbeat` at a
+configurable rate (default 1 Hz, configured via `heartbeat_rate_hz` in
+`sim_config.yaml`).  Each message contains only the current timestamp — there
+is no payload.
+
+The heartbeat is published **unconditionally** regardless of the current trust
+state (`TRUSTED`, `DEGRADED`, or `UNTRUSTED`).  It is architecturally separate
+from `/poise/system_integrity`, which communicates integrity *state*.  The
+heartbeat communicates *liveness*: the POISE process is running and its ROS2
+executor is alive.
+
+A POISE process failure causes the heartbeat to go **silent**.  Any external
+subscriber monitoring the publishing interval will detect this silence and can
+take appropriate action (inhibit autonomous operation, alert the operator,
+engage a fallback safety mode).
+
+The intended consumer is a **vehicle safety arbiter** or **system watchdog**
+external to POISE — running in a separate process, on a separate compute unit,
+or implemented in hardware.  Its design is outside the scope of this document
+and of the POISE package.
+
+### 7.4 Defense in Depth (ISO 26262)
+
+ISO 26262 Part 9 §6 defines *defense in depth* as the provision of independent
+safety mechanisms at different levels of a system, such that a single fault
+cannot defeat all protection layers simultaneously.
+
+In the POISE architecture:
+
+| Layer | Mechanism | Failure Domain |
+|---|---|---|
+| Primary localization | Autoware sensor fusion (GNSS, IMU, LiDAR) | Autoware process |
+| Integrity monitoring | POISE check nodes + aggregator | POISE process |
+| Monitor liveness | `/poise/heartbeat` consumer (external watchdog) | Separate process / hardware |
+
+Each layer is independent: a fault in the Autoware localization stack does not
+disable POISE; a POISE process failure does not disable the external watchdog;
+and a watchdog failure (if the watchdog itself has independent fault detection)
+does not disable the localization stack.
+
+This layered structure means that defeating the integrity guarantee requires
+simultaneous failures across multiple independent layers — a significantly
+higher bar than any single-layer design.
+
+---
+
+## 8. Relationship to ISO 26262 / SOTIF
 
 POISE Phase 3 is a research/portfolio prototype.  It has **not** been developed
 under a certified ISO 26262 process.  The design concepts are informed by:

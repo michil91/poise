@@ -230,3 +230,8 @@ integrity_aggregator:
 
     # JSON-lines log file path
     log_file_path: /tmp/poise_integrity_log.jsonl
+
+    # Rate at which /poise/heartbeat is published (Hz).
+    # Consumed by an external watchdog or vehicle safety arbiter outside POISE.
+    # Silence on this topic indicates a POISE process failure.
+    heartbeat_rate_hz: 1.0

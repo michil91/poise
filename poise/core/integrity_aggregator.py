@@ -59,7 +59,7 @@ import json
 import time
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Header
 from std_srvs.srv import Trigger
 from poise.msg import IntegrityStatus
 from poise.qos import INTEGRITY_QOS, SYSTEM_STATUS_QOS
@@ -83,10 +83,12 @@ class IntegrityAggregator(Node):
         self.declare_parameter('warn_escalation_timeout_s', 5.0)
         self.declare_parameter('revalidation_period_s',    10.0)
         self.declare_parameter('log_file_path', '/tmp/poise_integrity_log.jsonl')
+        self.declare_parameter('heartbeat_rate_hz', 1.0)
 
         self._escalation_timeout   = self.get_parameter('warn_escalation_timeout_s').value
         self._revalidation_period  = self.get_parameter('revalidation_period_s').value
         self._log_path             = self.get_parameter('log_file_path').value
+        self._heartbeat_rate       = self.get_parameter('heartbeat_rate_hz').value
 
         # ── State ────────────────────────────────────────────────────────────
         self._state = STATE_TRUSTED
@@ -129,6 +131,10 @@ class IntegrityAggregator(Node):
             String, '/poise/system_integrity', SYSTEM_STATUS_QOS
         )
 
+        self._heartbeat_pub = self.create_publisher(
+            Header, '/poise/heartbeat', SYSTEM_STATUS_QOS
+        )
+
         self.create_subscription(
             IntegrityStatus, '/poise/integrity_status',
             self._status_cb, INTEGRITY_QOS
@@ -138,8 +144,12 @@ class IntegrityAggregator(Node):
             Trigger, '/poise/reset', self._reset_cb
         )
 
-        # 1 Hz timer: escalation + revalidation + heartbeat
+        # 1 Hz timer: escalation + revalidation + system_integrity heartbeat
         self._timer = self.create_timer(1.0, self._periodic_cb)
+
+        # Configurable-rate timer: liveness heartbeat for external watchdog
+        heartbeat_period = 1.0 / self._heartbeat_rate
+        self._heartbeat_timer = self.create_timer(heartbeat_period, self._heartbeat_cb)
 
         # Publish initial state (TRANSIENT_LOCAL means late joiners get this)
         self._publish_state(reason='node_startup')
@@ -149,6 +159,20 @@ class IntegrityAggregator(Node):
             f'escalation_timeout={self._escalation_timeout}s | '
             f'revalidation_period={self._revalidation_period}s'
         )
+
+    # ── Heartbeat callback ────────────────────────────────────────────────────
+
+    def _heartbeat_cb(self):
+        """Publish a liveness heartbeat for consumption by an external watchdog.
+
+        Published unconditionally regardless of integrity state.  Silence on
+        this topic indicates a POISE process failure — detectable by any
+        external subscriber monitoring the publishing interval.
+        """
+        msg = Header()
+        msg.stamp = self.get_clock().now().to_msg()
+        msg.frame_id = 'poise'
+        self._heartbeat_pub.publish(msg)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
